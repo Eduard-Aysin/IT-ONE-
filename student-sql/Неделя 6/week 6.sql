@@ -71,13 +71,28 @@ limit 10
 
 
 --смотрим как отрабатывает запрос
-EXPLAIN --ESTIMATE
-select 
-	UserID,
-	count(EventTime) as total_user_count
-from web_logs wl
-group by UserID
-order by total_user_count desc
-limit 10
+EXPLAIN PLAN actions = 1, indexes = 1, projections = 1--PIPELINE --ESTIMATE
+select count() as total_errors
+from web_logs
+where StatusCode >= 400
+
+-- по плану видно что читается вся таблица
+
+ALTER TABLE web_logs
+    ADD INDEX idx_status_code StatusCode TYPE minmax GRANULARITY 4;
+
+ALTER TABLE web_logs
+    MATERIALIZE INDEX idx_status_code;
+
+-- смотрим повторно
+EXPLAIN PLAN actions = 1, indexes = 1, projections = 1--PIPELINE --ESTIMATE
+select count() as total_errors
+from web_logs
+where StatusCode >= 400
+
+-- запрос ускорился  - Granules: 254/1222, было 1222/1222 (вся таблица)
+
+
+
 
 
